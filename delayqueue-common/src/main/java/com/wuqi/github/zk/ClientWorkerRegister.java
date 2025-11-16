@@ -8,43 +8,58 @@ import org.apache.zookeeper.ZooDefs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import static com.wuqi.github.zk.ZkPathConstants.*;
+
 public class ClientWorkerRegister {
     private static final Logger LOG = LoggerFactory.getLogger(ClientWorkerRegister.class);
 
-    private static final String WORKER_ROOT_NODE = "/delayqueue/worker/worker_";
-    private static final String TOPIC_CONSUMER_WORKER_PREFIX = "%s_worker_%s";
-
-    private final String zkHosts;
-
     private final ZkConnector zkConnectorHolder;
 
+    private ConcurrentMap<String, List<String>> globalTopicWorkerMap = new ConcurrentHashMap<>();
+
     public ClientWorkerRegister(String zkHosts) throws Exception{
-        this.zkHosts = zkHosts;
         zkConnectorHolder = new ZkConnector(zkHosts);
     }
 
     public void registerWorkerIndex(String topic, int workerIndex) throws Exception{
         String workerAddress = String.format("%s:$s", IpUtils.getLocalIp(), workerIndex);
-        String uniqueWorker = String.format(TOPIC_CONSUMER_WORKER_PREFIX, topic, workerAddress);
-        String workerNode = WORKER_ROOT_NODE + uniqueWorker;
-        String path = zkConnectorHolder.getZooKeeper().create(workerNode,
-                null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, null, null);
-        //
+        String topicPath = String.format(TOPIC_WORKER_PREFIX, topic);
+        String workerPath = String.format(CLIENT_WORKER_FULLPATH, topic, workerAddress);
+        ClientWorker worker = new ClientWorker(topic, workerPath, zkConnectorHolder);
+        worker.zkRegister();
+
+        zkConnectorHolder.getZooKeeper().getChildren(topicPath, true, childrenCallback, null);
     }
 
-    AsyncCallback.StringCallback createWorkerCallback = new AsyncCallback.StringCallback() {
+    public List<String> getTopicClientWorkers(String topic){
+        List<String> res = globalTopicWorkerMap.get(topic);
+        return res != null? res : Collections.emptyList();
+    }
+
+    private void refreshTopicClientWorkers(String topicPath){
+        zkConnectorHolder.getZooKeeper().getChildren(topicPath, true, childrenCallback, null);
+    }
+
+    AsyncCallback.ChildrenCallback childrenCallback = new AsyncCallback.ChildrenCallback() {
         @Override
-        public void processResult(int rc, String path, Object ctx, String name) {
+        public void processResult(int rc, String path, Object ctx, List<String> children) {
             switch (KeeperException.Code.get(rc)){
                 case CONNECTIONLOSS:
+                    refreshTopicClientWorkers(path);
                     break;
                 case OK:
-                    break;
-                case NODEEXISTS:
+                    String topic = parseTopicNameFromTopicPath(path);
+                    globalTopicWorkerMap.put(topic, children);
                     break;
                 default:
-                    LOG.error("Something went wrong: "+ KeeperException.create(KeeperException.Code.get(rc), path));
+                    LOG.error("Something wrong happened: "+KeeperException.create(KeeperException.Code.get(rc), path));
             }
         }
-    }
+    };
+
 }
