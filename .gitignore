@@ -1,0 +1,29 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+
+# transient files
+*.trs
+*.iws
+*.classpath
+*.ipr
+*.iml
+*.project
+*.pydevproject
+
+out/production/
+target/
+.idea/
