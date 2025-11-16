@@ -117,7 +117,7 @@ PrepareQueue的分数需要与时间相关，正常情况下，消费者不管�
 高性能：Redis单机的QPS可以达到10w，Redis集群的QPS可以达到更高的水平，本方案没有复杂查询，消费过程中从Redis拉取超时消息的时间复杂度为O(1)。
 高可用：至少消费一次保障了定时消息一定被消费，重试次数控制保证消费不被阻塞。
 
-参考其他开源项目实现：
-https://github.com/yanghuijava/redis-delay-queue
-https://github.com/xuqinghua91/awesome-delay-queue
-https://github.com/bingoohuang/delayqueue
+### 参考其他开源项目实现：  
+https://github.com/yanghuijava/redis-delay-queue  
+https://github.com/xuqinghua91/awesome-delay-queue  
+https://github.com/bingoohuang/delayqueue  
